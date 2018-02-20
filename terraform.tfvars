@@ -1,0 +1,9 @@
+aws_profile		    = "default"
+aws_region		    = "us-west-1"
+dev_instance_type	= "t2.micro"
+dev_ami			    = "ami-6b2c220b"
+# security_group_id = "sg-mysecurity_group" # you may need to create one before
+# key_name		    = "aws_key_name"        # assign a name
+# public_key_path   = "/full/path/key.pub"  # create your own keys
+# private_key_path  = "/full/path/key.pem"
+# localip           = "1.1.1.1/0"           # Replace with your local IP and cidr
