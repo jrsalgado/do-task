@@ -1,9 +1,9 @@
 # Providers
  # AWS provider
 
+# TODO: Read terraform configuration
 provider "aws" {
-  region = "${var.aws_region}"
-  profile = "${var.aws_profile}"
+  # TODO: Set configurations
 }
 
 #Security groups
@@ -12,7 +12,7 @@ data "aws_security_group" "rancherServerCustom" {
   id = "${var.security_group_id}"
 }
 
-# Simple instace
+# Simple Rancher Server
 
 resource "aws_instance" "rancherServer" {
   instance_type = "${var.dev_instance_type}"
@@ -35,10 +35,10 @@ resource "aws_instance" "rancherServer" {
     }
   }
   
-  # run rancher module after public dns
-  provisioner "local-exec" {
-    command = "sleep 1m && terraform apply -lock=false -auto-approve -var 'rancher_server_public_dns=${aws_instance.rancherServer.public_dns}' rancher"
-  }
+  # TODO: --- EXTRA run rancher module after public dns ---
+  # provisioner "local-exec" {
+  #   command = "sleep 1m && terraform apply -lock=false -auto-approve -var 'rancher_server_public_dns=${aws_instance.rancherServer.public_dns}' rancher"
+  # }
 
 }
 

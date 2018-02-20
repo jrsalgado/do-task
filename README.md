@@ -1,6 +1,7 @@
 
 # NEARSOFT DEVOPS Task
-
+## Use a Docker container with Terraform (IAC) installed and configured to create and manage your Infrastructure on AWS (Cloud Provider). You will deploy a Rancher server (Container Manager Platform) ready to deploy and manage containers (CaaS)
+## Extra: Deploy an Manage APP stack ( set of containers ) on Rancher
 ___
 
 ## Goal set, debug, configure and provision a terraform server on aws
