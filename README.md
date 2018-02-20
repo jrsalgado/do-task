@@ -4,7 +4,7 @@
 ## Extra: Deploy an Manage APP stack ( set of containers ) on Rancher
 ___
 
-## Goal set, debug, configure and provision a terraform server on aws
+## Goal set, debug, configure and provision a Rancher server on aws
 
 - You will need to use terraform cli tool to deploy the infrastructure settings from main.tf
 - The file main.tf use some variables that you need to configure before attempting to apply changes to AWS, use the file terraform.tfvars and varibles.tf, some of those variables needs to be calculated from aws console.
