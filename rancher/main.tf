@@ -8,7 +8,7 @@ provider "rancher" {
 # Rancher Environments
  # Rancher demo environment
 resource "rancher_environment" "demo" {  
-  name = "blog-demo"  
+  name = "task-demo"  
   description = "Demonstration environment"  
   orchestration = "swarm"
 }
