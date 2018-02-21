@@ -8,52 +8,41 @@ provider "aws" {
   profile = "${var.aws_profile}"
 }
 
-#Security groups
+# Key pair
 
-# data "aws_security_group" "rancherServerCustom" {
-#   id = "${var.security_group_id}"
-# }
-
-resource "aws_route_table" "public" {
-  vpc_id = "${aws_vpc.my_app_vpc.id}"
-  route {
-    cidr_block = "0.0.0.0/0"
-	  gateway_id = "${aws_internet_gateway.gw.id}"
-	}
-  tags {
-	Name = "my_app_public"
-  }
+resource "aws_key_pair" "auth" {
+  key_name  ="${var.key_name}"
+  public_key = "${file(var.public_key_path)}"
 }
 
-resource "aws_route_table_association" "public_assoc" {
+# EC2 Rancher Server
+
+resource "aws_instance" "rancherServer" {
+  instance_type = "${var.dev_instance_type}"
+  ami = "${var.dev_ami}"
+  tags {
+    Name = "Rancher Server"
+  }
+  key_name = "${aws_key_pair.auth.id}"
+  vpc_security_group_ids = ["${aws_security_group.my_app_sg.id}"]
   subnet_id = "${aws_subnet.my_app_sn.id}"
-  route_table_id = "${aws_route_table.public.id}"
-}
+    
+  depends_on = ["aws_internet_gateway.gw"]
+  
+  provisioner "remote-exec" {
+    inline = [ 
+      "sudo docker run -d --restart=unless-stopped -p 8080:8080 rancher/server:v1.6.3" 
+    ]
 
-resource "aws_internet_gateway" "gw" {
-  vpc_id = "${aws_vpc.my_app_vpc.id}"
-  tags {
-    Name = "my_app_iw"
+    connection {
+      type         = "ssh"
+      user         = "ubuntu"
+      private_key  = "${file(var.private_key_path)}"
+    }
   }
 }
 
-resource "aws_vpc" "my_app_vpc" {
-  cidr_block            = "10.0.0.0/16" // THIS is PRIVATE!!! and should not be
-  enable_dns_hostnames  = true
-  enable_dns_support    = true
-  tags {
-    Name = "my_app_vpc"
-  }
-}
-
-resource "aws_subnet" "my_app_sn" {
-  vpc_id     = "${aws_vpc.my_app_vpc.id}"
-  cidr_block = "10.0.0.0/24"
-  map_public_ip_on_launch = true
-  tags {
-    Name = "my_app_sn"
-  }
-}
+# Security Group
 
 resource "aws_security_group" "my_app_sg" {
   name        = "my_rancher_server_sg"
@@ -104,53 +93,58 @@ resource "aws_security_group" "my_app_sg" {
   }
 }
 
-# Simple Rancher Server
+# VPC
 
-resource "aws_instance" "rancherServer" {
-  instance_type = "${var.dev_instance_type}"
-  ami = "${var.dev_ami}"
+resource "aws_vpc" "my_app_vpc" {
+  cidr_block            = "10.0.0.0/16"
+  enable_dns_hostnames  = true
+  enable_dns_support    = true
   tags {
-    Name = "Rancher Server"
-  }
-  key_name = "${aws_key_pair.auth.id}"
-  # vpc_security_group_ids = ["${data.aws_security_group.rancherServerCustom.id}"]
-  vpc_security_group_ids = ["${aws_security_group.my_app_sg.id}"]
-  subnet_id = "${aws_subnet.my_app_sn.id}"
-    
-  depends_on = ["aws_internet_gateway.gw"]
-  
-  provisioner "remote-exec" {
-    inline = [ 
-      "sudo docker run -d --restart=unless-stopped -p 8080:8080 rancher/server:v1.6.3" 
-    ]
-
-    connection {
-      type         = "ssh"
-      user         = "ubuntu"
-      private_key  = "${file(var.private_key_path)}"
-    }
+    Name = "my_app_vpc"
   }
 }
-resource "aws_instance" "rancherHost" {
-  instance_type = "${var.dev_instance_type}"
-  ami = "${var.dev_ami}"
+
+# Subnet
+
+resource "aws_subnet" "my_app_sn" {
+  vpc_id     = "${aws_vpc.my_app_vpc.id}"
+  cidr_block = "10.0.0.0/24"
+  map_public_ip_on_launch = true
   tags {
-    Name = "Rancher Host"
+    Name = "my_app_sn"
   }
-  key_name = "${aws_key_pair.auth.id}"
-  vpc_security_group_ids = ["${aws_security_group.my_app_sg.id}"]
+}
+
+# Route Table
+
+resource "aws_route_table" "public" {
+  vpc_id = "${aws_vpc.my_app_vpc.id}"
+  route {
+    cidr_block = "0.0.0.0/0"
+	  gateway_id = "${aws_internet_gateway.gw.id}"
+	}
+  tags {
+	Name = "my_app_public"
+  }
+}
+
+# Route table association
+
+resource "aws_route_table_association" "public_assoc" {
   subnet_id = "${aws_subnet.my_app_sn.id}"
-  depends_on = ["aws_internet_gateway.gw"]
-
+  route_table_id = "${aws_route_table.public.id}"
 }
 
-#key pair
+# internet gateway
 
-resource "aws_key_pair" "auth" {
-  key_name  ="${var.key_name}"
-  public_key = "${file(var.public_key_path)}"
+resource "aws_internet_gateway" "gw" {
+  vpc_id = "${aws_vpc.my_app_vpc.id}"
+  tags {
+    Name = "my_app_iw"
+  }
 }
 
+# Output 
 output "rancher_server_public_dns" {
   value = "${aws_instance.rancherServer.public_dns}"
 }
