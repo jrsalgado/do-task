@@ -4,3 +4,4 @@ private/*
 terraform.tfstate*
 *.sh
 *.py
+.secrets
