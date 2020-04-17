@@ -2,6 +2,5 @@ private/*
 .terraform
 .ssh
 terraform.tfstate*
-*.sh
 *.py
 .secrets
