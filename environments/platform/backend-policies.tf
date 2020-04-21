@@ -1,12 +1,9 @@
 data "aws_iam_policy_document" "s3_policies_document" {
   statement {
-    sid = "S3ReadWritteAccess"
-
     actions = [
       "s3:GetObject",
         "s3:PutObject",
     ]
-
     resources = [
       "arn:aws:s3:::terraform-states.nearsoft/ns-task.tfstate",
     ]
@@ -15,8 +12,6 @@ data "aws_iam_policy_document" "s3_policies_document" {
 
 data "aws_iam_policy_document" "ec2_policies_document" {
   statement {
-    sid = "CreateEc2Instance"
-
     actions = [
         "ec2:RunInstances",
         "ec2:StartInstances",
