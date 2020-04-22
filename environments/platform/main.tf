@@ -29,6 +29,16 @@ module "user_group_task_interviewers" {
       resources = [
         "arn:aws:s3:::*",
       ]
+    },
+    {
+      actions  = [
+        "ec2:Create*",
+        "ec2:Modify*",
+        "ec2:Delete*",
+      ]
+      resources = [
+        "arn:aws:ec2:us-east-1::*",
+      ]
     }
   ]
 }
