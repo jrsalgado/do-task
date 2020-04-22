@@ -4,3 +4,4 @@ private/*
 terraform.tfstate*
 *.py
 .secrets
+.gitconfig
