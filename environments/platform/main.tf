@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1"
+  region = var.region
 }
 
 # resource "aws_iam_group" "task_interviewers" {
@@ -10,6 +10,7 @@ provider "aws" {
 module "user_group_task_interviewers" {
   source = "../../modules/user_group"
   name = "task-interviewers"
+  region = var.region
 
   statements = [
     {
