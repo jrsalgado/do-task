@@ -35,13 +35,21 @@ module "user_group_task_interviewers" {
         "ec2:Create*",
         "ec2:Modify*",
         "ec2:Delete*",
-        "ec2:List*",
-        "ec2:Describe*",
+        #VPC Persmissions
       ]
       resources = [
         "arn:aws:ec2:us-east-1::*",
       ]
-    }
+    },
+    # VPC Permissions
+    {
+      actions = [
+        "ec2:Describe*",
+      ]
+      resources = [
+        "*",
+      ]
+    },
   ]
 }
 
