@@ -29,11 +29,14 @@ module "user_group_task_interviewers" {
         "arn:aws:s3:::*",
       ]
     },
+    # EC2 permissions
     {
       actions  = [
         "ec2:Create*",
         "ec2:Modify*",
         "ec2:Delete*",
+        "ec2:List*",
+        "ec2:Describe*",
       ]
       resources = [
         "arn:aws:ec2:us-east-1::*",
