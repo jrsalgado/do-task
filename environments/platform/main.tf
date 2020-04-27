@@ -35,21 +35,42 @@ module "user_group_task_interviewers" {
         "ec2:Create*",
         "ec2:Modify*",
         "ec2:Delete*",
-        #VPC Persmissions
       ]
       resources = [
-        "arn:aws:ec2:us-east-1::*",
+        "arn:aws:ec2:::*",
       ]
     },
     # VPC Permissions
     {
       actions = [
         "ec2:Describe*",
+        "ec2:CreateSecurityGroup",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:ImportKeyPair",
+        "ec2:DeleteSecurityGroup",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:CreateLaunchTemplate",
+        "ec2:DescribeLaunchTemplates",
+        "ec2:DescribeLaunchTemplateVersions",
+        "ec2:RunInstances",
       ]
       resources = [
         "*",
       ]
     },
+    {
+      actions = [
+        "autoscaling:CreateAutoScalingGroup",
+        "autoscaling:UpdateAutoScalingGroup",
+        "autoscaling:Describe*",
+      ]
+
+      resources = [
+        "*",
+      ]
+    }
   ]
 }
 
