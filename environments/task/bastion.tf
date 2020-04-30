@@ -1,7 +1,12 @@
+# Getting what is my ip
+data "external" "what_is_my_ip" {
+  program = ["bash", "-c", "curl -s 'https://ipinfo.io/json'"]
+}
+
 resource "aws_security_group" "bastion_ssh" {
   name        = "bastion-ssh"
   description = "Allow SSH inbound traffic"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = data.aws_vpc.main.id
 
   ingress {
     from_port   = 22
@@ -10,7 +15,7 @@ resource "aws_security_group" "bastion_ssh" {
     # Please restrict your ingress to only necessary IPs and ports.
     # Opening to 0.0.0.0/0 can lead to security vulnerabilities.
     # $(curl -s http://checkip.amazonaws.com)
-    cidr_blocks = ["128.177.20.34/32"] # add a CIDR block here
+    cidr_blocks = ["${data.external.what_is_my_ip.result.ip}/32"] # add a CIDR block here
   }
 
   egress {
@@ -35,7 +40,7 @@ data "template_cloudinit_config" "user_data" {
 
 resource "aws_key_pair" "bastion" {
   key_name = "bastion"
-  public_key = file("${path.module}/files/private/ubuntu_rsa.pub")
+  public_key = file("${path.module}/files/private/futuredevops_bastion.pub")
 }
 
 resource "aws_launch_template" "bastion" {
@@ -49,22 +54,51 @@ resource "aws_launch_template" "bastion" {
   network_interfaces {
     associate_public_ip_address        = true
     delete_on_termination              = true
-    subnet_id                          = element(tolist(data.aws_subnet_ids.default.ids),0)
+    subnet_id                          = aws_default_subnet.bastion.id
     security_groups                    = [
       "${aws_security_group.bastion_ssh.id}"
       ]
   }
 }
 
+resource "aws_lb" "bastion" {
+  name               = "bastion"
+  internal           = false
+  load_balancer_type = "network"
+  subnets            = [aws_default_subnet.bastion.id, aws_default_subnet.my_awesome_resource.id]
+  security_groups = [aws_security_group.bastion_ssh.id]
+  enable_deletion_protection = false # to delete
+}
+
+resource "aws_lb_target_group" "bastion" {
+  name     = "bastion"
+  port     = 22
+  protocol = "TCP"
+  vpc_id   = data.aws_vpc.main.id
+}
+
+resource "aws_lb_listener" "ssh" {
+  load_balancer_arn = aws_lb.bastion.arn
+  port              = 22
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.bastion.arn
+  }
+}
+
 resource "aws_autoscaling_group" "bastion" {
   name = "bastion-ag"
+  # availability_zones = ["us-east-1"]: lets deep into
 
   launch_template {
     id = aws_launch_template.bastion.id
     version = "$Latest"
   }
 
-  vpc_zone_identifier = data.aws_subnet_ids.default.ids
+  target_group_arns = [aws_lb_target_group.bastion.arn] # i dont know this
+  vpc_zone_identifier = [aws_default_subnet.bastion.id]
   desired_capacity          = local.agCapacity
   min_size                  = local.agCapacity
   max_size                  = local.agCapacity

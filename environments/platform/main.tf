@@ -75,6 +75,7 @@ module "user_group_task_interviewers" {
 }
 
 locals {
+  # TODO: get out these interviewers and set from a different
   interviewers = {
     "msanchez@nearsoft.com" = {
       groups = [
