@@ -3,11 +3,16 @@ provider "aws" {
 }
 #########################################
 
+resource "aws_key_pair" "web" {
+  key_name = "web"
+  public_key = file("${path.module}/files/private/resources_aws.pub")
+}
+
 resource "aws_default_subnet" "bastion" {
   availability_zone = data.aws_availability_zones.available.names[0]
 }
 
-resource "aws_default_subnet" "my_awesome_resource" {
+resource "aws_default_subnet" "web" {
   availability_zone = data.aws_availability_zones.available.names[1] # different than bastion
 }
 
@@ -20,42 +25,35 @@ resource "aws_security_group" "bastion_auth" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.main.cidr_block] # allow bastion connection
+    cidr_blocks = [aws_default_subnet.bastion.cidr_block] # allow bastion connection
   }
 }
 
-resource "aws_key_pair" "my_awesome_resource" {
-  key_name = "resource"
-  public_key = file("${path.module}/files/private/resources_aws.pub")
-}
-
-resource "aws_launch_template" "my_awesome_resource" {
+resource "aws_launch_template" "web" {
   name_prefix                          = "web-"
   image_id                             = data.aws_ami.ubuntu.id
   instance_type                        = "t2.micro"
-  key_name                             = aws_key_pair.my_awesome_resource.key_name
-  user_data                            = data.template_cloudinit_config.user_data.rendered
+  key_name                             = aws_key_pair.web.key_name
+  # user_data                            = data.template_cloudinit_config.ssh_config.rendered
   instance_initiated_shutdown_behavior = "terminate"
   ebs_optimized                        = false
   network_interfaces {
     associate_public_ip_address        = true
     delete_on_termination              = true
-    subnet_id                          = aws_default_subnet.my_awesome_resource.id
-    security_groups                    = [
-      "${aws_security_group.bastion_auth.id}"
-    ]
+    subnet_id                          = aws_default_subnet.web.id
+    security_groups                    = [aws_security_group.bastion_auth.id]
   }
 }
 
-resource "aws_autoscaling_group" "my_awesome_resource" {
+resource "aws_autoscaling_group" "web" {
   name = "web_ag"
 
   launch_template {
-    id = aws_launch_template.my_awesome_resource.id
+    id = aws_launch_template.web.id
     version = "$Latest"
   }
 
-  vpc_zone_identifier = [aws_default_subnet.my_awesome_resource.id]
+  vpc_zone_identifier       = [aws_default_subnet.web.id]
   desired_capacity          = var.web_auto_scaling_group_capacity
   min_size                  = var.web_auto_scaling_group_capacity
   max_size                  = var.web_auto_scaling_group_capacity
