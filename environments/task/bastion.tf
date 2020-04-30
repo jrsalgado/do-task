@@ -1,5 +1,10 @@
+resource "aws_key_pair" "bastion" {
+  key_name   = "bastion"
+  public_key = file("${path.module}/files/private/futuredevops_bastion.pub")
+}
+
 resource "aws_security_group" "bastion_ssh" {
-  name        = "bastion-ssh"
+  name        = "bastion_ssh"
   description = "Allow SSH inbound traffic"
   vpc_id      = data.aws_vpc.main.id
 
@@ -21,9 +26,34 @@ resource "aws_security_group" "bastion_ssh" {
   }
 }
 
-resource "aws_key_pair" "bastion" {
-  key_name = "bastion"
-  public_key = file("${path.module}/files/private/futuredevops_bastion.pub")
+resource "aws_lb_listener" "ssh" {
+  load_balancer_arn = aws_lb.bastion.arn
+  # description property is not supported on this resource
+  # description       = "Listener to handle ssh inbound and forward to bastion target group"
+  port              = 22
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.bastion.arn
+  }
+}
+
+resource "aws_lb_target_group" "bastion" {
+  name        = "bastion"
+  # description property is not supported on this resource
+  # description = "Group to forward ssh entries to vpc"
+  port        = 22
+  protocol    = "TCP"
+  vpc_id      = data.aws_vpc.main.id
+}
+
+resource "aws_lb" "bastion" {
+  name                       = "bastion"
+  internal                   = false
+  load_balancer_type         = "network"
+  subnets                    = [aws_default_subnet.bastion.id, aws_default_subnet.web.id]
+  enable_deletion_protection = false # to delete
 }
 
 resource "aws_launch_template" "bastion" {
@@ -38,36 +68,7 @@ resource "aws_launch_template" "bastion" {
     associate_public_ip_address        = true
     delete_on_termination              = true
     subnet_id                          = aws_default_subnet.bastion.id
-    security_groups                    = [
-      "${aws_security_group.bastion_ssh.id}"
-      ]
-  }
-}
-
-resource "aws_lb" "bastion" {
-  name               = "bastion"
-  internal           = false
-  load_balancer_type = "network"
-  subnets            = [aws_default_subnet.bastion.id, aws_default_subnet.my_awesome_resource.id]
-  security_groups = [aws_security_group.bastion_ssh.id]
-  enable_deletion_protection = false # to delete
-}
-
-resource "aws_lb_target_group" "bastion" {
-  name     = "bastion"
-  port     = 22
-  protocol = "TCP"
-  vpc_id   = data.aws_vpc.main.id
-}
-
-resource "aws_lb_listener" "ssh" {
-  load_balancer_arn = aws_lb.bastion.arn
-  port              = 22
-  protocol          = "TCP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bastion.arn
+    security_groups                    = [aws_security_group.bastion_ssh.id] # check interpolation
   }
 }
 
@@ -79,8 +80,8 @@ resource "aws_autoscaling_group" "bastion" {
     version = "$Latest"
   }
 
-  target_group_arns = [aws_lb_target_group.bastion.arn]
-  vpc_zone_identifier = [aws_default_subnet.bastion.id]
+  target_group_arns         = [aws_lb_target_group.bastion.arn]
+  vpc_zone_identifier       = [aws_default_subnet.bastion.id]
   desired_capacity          = var.bastion_auto_scaling_group_capacity
   min_size                  = var.bastion_auto_scaling_group_capacity
   max_size                  = var.bastion_auto_scaling_group_capacity
