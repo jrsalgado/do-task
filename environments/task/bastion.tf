@@ -1,8 +1,3 @@
-# Getting what is my ip
-data "external" "what_is_my_ip" {
-  program = ["bash", "-c", "curl -s 'https://ipinfo.io/json'"]
-}
-
 resource "aws_security_group" "bastion_ssh" {
   name        = "bastion-ssh"
   description = "Allow SSH inbound traffic"
@@ -15,7 +10,7 @@ resource "aws_security_group" "bastion_ssh" {
     # Please restrict your ingress to only necessary IPs and ports.
     # Opening to 0.0.0.0/0 can lead to security vulnerabilities.
     # $(curl -s http://checkip.amazonaws.com)
-    cidr_blocks = ["${data.external.what_is_my_ip.result.ip}/32"] # add a CIDR block here
+    cidr_blocks = ["${data.external.ip.result.ip}/32"] # add a CIDR block here
   }
 
   egress {
@@ -23,18 +18,6 @@ resource "aws_security_group" "bastion_ssh" {
     to_port         = 0
     protocol        = "-1"
     cidr_blocks     = ["0.0.0.0/0"]
-  }
-}
-
-data "template_cloudinit_config" "user_data" {
-  gzip          = false
-  base64_encode = true
-
-  # Setup bastion ssh client config
-  part {
-    filename     = "20_setup_bastion_ssh_client.sh"
-    content_type = "text/x-shellscript"
-    content      = "${file("./files/ssh-client/bastion_client.sh")}"
   }
 }
 
@@ -48,7 +31,7 @@ resource "aws_launch_template" "bastion" {
   image_id                             = "ami-0a313d6098716f372"
   instance_type                        = "t2.micro"
   key_name                             = aws_key_pair.bastion.key_name
-  user_data                            = data.template_cloudinit_config.user_data.rendered
+  user_data                            = data.template_cloudinit_config.ssh_config.rendered
   instance_initiated_shutdown_behavior = "terminate"
   ebs_optimized                        = false
   network_interfaces {
@@ -90,18 +73,17 @@ resource "aws_lb_listener" "ssh" {
 
 resource "aws_autoscaling_group" "bastion" {
   name = "bastion-ag"
-  # availability_zones = ["us-east-1"]: lets deep into
 
   launch_template {
     id = aws_launch_template.bastion.id
     version = "$Latest"
   }
 
-  target_group_arns = [aws_lb_target_group.bastion.arn] # i dont know this
+  target_group_arns = [aws_lb_target_group.bastion.arn]
   vpc_zone_identifier = [aws_default_subnet.bastion.id]
-  desired_capacity          = local.agCapacity
-  min_size                  = local.agCapacity
-  max_size                  = local.agCapacity
+  desired_capacity          = var.bastion_auto_scaling_group_capacity
+  min_size                  = var.bastion_auto_scaling_group_capacity
+  max_size                  = var.bastion_auto_scaling_group_capacity
   health_check_grace_period = "60"
   health_check_type         = "EC2"
   force_delete              = true
