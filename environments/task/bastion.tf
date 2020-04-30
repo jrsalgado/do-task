@@ -90,3 +90,7 @@ resource "aws_autoscaling_group" "bastion" {
   force_delete              = true
   wait_for_capacity_timeout = 0
 }
+
+output "bastion-dns" {
+  value = aws_lb.bastion.dns_name
+}
