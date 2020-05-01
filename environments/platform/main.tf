@@ -2,11 +2,6 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# resource "aws_iam_group" "task_interviewers" {
-#   name = "task-interviewers"
-#   path = "/"
-# }
-
 module "user_group_task_interviewers" {
   source = "../../modules/user_group"
   name = "task-interviewers"
@@ -52,9 +47,14 @@ module "user_group_task_interviewers" {
         "ec2:RevokeSecurityGroupEgress",
         "ec2:RevokeSecurityGroupIngress",
         "ec2:CreateLaunchTemplate",
+        "ec2:Delete*",
         "ec2:DescribeLaunchTemplates",
         "ec2:DescribeLaunchTemplateVersions",
         "ec2:RunInstances",
+        "ec2:StartInstances",
+        "ec2:CreateTags",
+        "ec2:Modify*",
+        "ec2:CreateSubnet",
       ]
       resources = [
         "*",
@@ -65,12 +65,47 @@ module "user_group_task_interviewers" {
         "autoscaling:CreateAutoScalingGroup",
         "autoscaling:UpdateAutoScalingGroup",
         "autoscaling:Describe*",
+        "autoscaling:Delete*",
       ]
 
       resources = [
         "*",
       ]
-    }
+    },
+    {
+      actions = [
+        "elasticloadbalancing:Create*",
+        "elasticloadbalancing:Delete*",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:Describe*",
+        "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
+        "elasticloadbalancing:AttachLoadBalancerToSubnets",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:SetSecurityGroups",
+      ]
+
+      resources = [
+        "*",
+      ]
+    },
+    #VPC
+     {
+      actions = [
+        "ec2:CreateVpc", 
+        "ec2:CreateSubnet", 
+        "ec2:DescribeAvailabilityZones",
+        "ec2:CreateRouteTable", 
+        "ec2:CreateRoute", 
+        "ec2:CreateInternetGateway", 
+        "ec2:AttachInternetGateway", 
+        "ec2:AssociateRouteTable", 
+        "ec2:ModifyVpcAttribute"
+      ]
+
+      resources = [
+        "*",
+      ]
+    },
   ]
 }
 
