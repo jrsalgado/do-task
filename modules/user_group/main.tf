@@ -1,4 +1,3 @@
-
 data "aws_iam_policy_document" "policy_document" {
   dynamic "statement" {
     for_each = [for s in var.statements: {

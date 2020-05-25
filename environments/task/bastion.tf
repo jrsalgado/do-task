@@ -1,7 +1,12 @@
+resource "aws_key_pair" "bastion" {
+  key_name   = "bastion"
+  public_key = file("${path.module}/files/private/futuredevops_bastion.pub")
+}
+
 resource "aws_security_group" "bastion_ssh" {
-  name        = "bastion-ssh"
+  name        = "bastion_ssh"
   description = "Allow SSH inbound traffic"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = data.aws_vpc.main.id
 
   ingress {
     from_port   = 22
@@ -10,7 +15,7 @@ resource "aws_security_group" "bastion_ssh" {
     # Please restrict your ingress to only necessary IPs and ports.
     # Opening to 0.0.0.0/0 can lead to security vulnerabilities.
     # $(curl -s http://checkip.amazonaws.com)
-    cidr_blocks = ["128.177.20.34/32"] # add a CIDR block here
+    cidr_blocks = ["${data.external.ip.result.ip}/32"] # add a CIDR block here
   }
 
   egress {
@@ -21,21 +26,34 @@ resource "aws_security_group" "bastion_ssh" {
   }
 }
 
-data "template_cloudinit_config" "user_data" {
-  gzip          = false
-  base64_encode = true
+resource "aws_lb_listener" "ssh" {
+  load_balancer_arn = aws_lb.bastion.arn
+  # description property is not supported on this resource
+  # description       = "Listener to handle ssh inbound and forward to bastion target group"
+  port              = 22
+  protocol          = "TCP"
 
-  # Setup bastion ssh client config
-  part {
-    filename     = "20_setup_bastion_ssh_client.sh"
-    content_type = "text/x-shellscript"
-    content      = "${file("./files/ssh-client/bastion_client.sh")}"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.bastion.arn
   }
 }
 
-resource "aws_key_pair" "bastion" {
-  key_name = "bastion"
-  public_key = file("${path.module}/files/private/ubuntu_rsa.pub")
+resource "aws_lb_target_group" "bastion" {
+  name        = "bastion"
+  # description property is not supported on this resource
+  # description = "Group to forward ssh entries to vpc"
+  port        = 22
+  protocol    = "TCP"
+  vpc_id      = data.aws_vpc.main.id
+}
+
+resource "aws_lb" "bastion" {
+  name                       = "bastion"
+  internal                   = false
+  load_balancer_type         = "network"
+  subnets                    = [aws_default_subnet.bastion.id, aws_default_subnet.web.id]
+  enable_deletion_protection = false # to delete
 }
 
 resource "aws_launch_template" "bastion" {
@@ -43,16 +61,14 @@ resource "aws_launch_template" "bastion" {
   image_id                             = "ami-0a313d6098716f372"
   instance_type                        = "t2.micro"
   key_name                             = aws_key_pair.bastion.key_name
-  user_data                            = data.template_cloudinit_config.user_data.rendered
+  user_data                            = data.template_cloudinit_config.ssh_config.rendered
   instance_initiated_shutdown_behavior = "terminate"
   ebs_optimized                        = false
   network_interfaces {
     associate_public_ip_address        = true
     delete_on_termination              = true
-    subnet_id                          = element(tolist(data.aws_subnet_ids.default.ids),0)
-    security_groups                    = [
-      "${aws_security_group.bastion_ssh.id}"
-      ]
+    subnet_id                          = aws_default_subnet.bastion.id
+    security_groups                    = [aws_security_group.bastion_ssh.id] # check interpolation
   }
 }
 
@@ -64,12 +80,17 @@ resource "aws_autoscaling_group" "bastion" {
     version = "$Latest"
   }
 
-  vpc_zone_identifier = data.aws_subnet_ids.default.ids
-  desired_capacity          = local.agCapacity
-  min_size                  = local.agCapacity
-  max_size                  = local.agCapacity
+  target_group_arns         = [aws_lb_target_group.bastion.arn]
+  vpc_zone_identifier       = [aws_default_subnet.bastion.id]
+  desired_capacity          = var.bastion_auto_scaling_group_capacity
+  min_size                  = var.bastion_auto_scaling_group_capacity
+  max_size                  = var.bastion_auto_scaling_group_capacity
   health_check_grace_period = "60"
   health_check_type         = "EC2"
   force_delete              = true
   wait_for_capacity_timeout = 0
+}
+
+output "bastion-dns" {
+  value = aws_lb.bastion.dns_name
 }

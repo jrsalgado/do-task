@@ -7,6 +7,7 @@ RUN apt update \
     && curl https://releases.hashicorp.com/terraform/0.12.24/terraform_0.12.24_linux_amd64.zip -o terraform.zip \
     && unzip -o terraform.zip -d terraform \
     && mv terraform/terraform /usr/bin \
-    && mkdir /root/.aws
+    && mkdir /root/.aws \
+    && echo 'alias tf="terraform"' >> ~/.bashrc
 
 WORKDIR /terraform
